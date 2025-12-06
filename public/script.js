@@ -544,46 +544,55 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ========= 发布 / 删除 ========= */
 
   async function publishPost(options = {}) {
-    if (!input || !submitBtn) return;
+  if (!input || !submitBtn) return;
 
-    const raw = input.value;
-    if (!raw.trim()) return;
+  const raw = input.value;
+  const hasText = raw.trim().length > 0;
+  const hasImages = currentImages.length > 0;
 
-    if (raw.length > 2000) {
-      alert("内容有点长（>2000字），可以分两条发哦～");
-      return;
-    }
-
-    const originalBtnText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = "发送中.";
-
-    try {
-      const newPost = await createPostOnServer(raw, currentImages);
-      if (!newPost) throw new Error("Empty new post");
-
-      input.value = "";
-      clearAllImages();
-
-      const el = createPostElement(newPost);
-      postsList.prepend(el);
-      bindCardActions();
-      updateHasPostsClass(postsList.children.length);
-
-      if (options.scrollToTop && mainEl) {
-        mainEl.scrollTo({
-          top: 0,
-          behavior: "smooth",
-        });
-      }
-    } catch (err) {
-      console.error("publishPost error:", err);
-      alert("发帖失败了，等一下再试试～ 内容我帮你保留在输入框里。");
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.textContent = originalBtnText;
-    }
+  // 文字和图片都没有，就不发
+  if (!hasText && !hasImages) {
+    alert("写点文字或者选一张图片再发吧～");
+    return;
   }
+
+  // 只在有文字的时候才检查长度
+  if (hasText && raw.length > 2000) {
+    alert("内容有点长（>2000字），可以分两条发哦～");
+    return;
+  }
+
+  const originalBtnText = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "发送中.";
+
+  try {
+    const newPost = await createPostOnServer(raw, currentImages);
+    if (!newPost) throw new Error("Empty new post");
+
+    input.value = "";
+    clearAllImages();
+
+    const el = createPostElement(newPost);
+    postsList.prepend(el);
+    bindCardActions();
+    updateHasPostsClass(postsList.children.length);
+
+    if (options.scrollToTop && mainEl) {
+      mainEl.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+    }
+  } catch (err) {
+    console.error("publishPost error:", err);
+    alert("发帖失败了，等一下再试试～ 内容我帮你保留在输入框里。");
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalBtnText;
+  }
+}
+
 
   async function performDeletePost(id) {
     try {

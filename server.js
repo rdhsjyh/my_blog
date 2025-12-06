@@ -32,20 +32,20 @@ const upload = multer({ storage });
 
 // ================== 静态文件 ==================
 
-// 静态前端文件（index.html / style.css / script.js）
+// 前端静态资源
 app.use(express.static(path.join(__dirname, "public")));
 
-// 对外暴露图片目录：/uploads/xxx.jpg
+// 图片静态访问：/uploads/xxx.png
 app.use("/uploads", express.static(uploadDir));
 
-// 根路径返回首页
+// 根路径 → index.html
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-// ================== 简单 posts 数据（内存版，本地测试用） ==================
+// ================== 简易“数据库”：内存里的 posts ==================
 /**
- * 每条 post 结构：
+ * post 结构：
  * {
  *   id: string,
  *   content: string,
@@ -66,14 +66,12 @@ app.get("/api/posts", (req, res) => {
   res.json(safePosts);
 });
 
-// 创建帖子（支持：纯文字 JSON / 带多图的 multipart/form-data）
+// 创建帖子（支持：纯文字 / 纯图片 / 图文混合）
 app.post("/api/posts", upload.array("images", 9), (req, res) => {
   const body = req.body || {};
   const content = (body.content || body.text || "").toString();
 
-  if (!content.trim()) {
-    return res.status(400).json({ error: "Content required" });
-  }
+  const hasContent = content.trim().length > 0;
 
   const images = [];
   if (Array.isArray(req.files)) {
@@ -84,14 +82,21 @@ app.post("/api/posts", upload.array("images", 9), (req, res) => {
       });
     });
   }
+  const hasImages = images.length > 0;
+
+  // 文字和图片都没有才不让发
+  if (!hasContent && !hasImages) {
+    return res.status(400).json({ error: "Content or image required" });
+  }
 
   const newPost = {
     id: Date.now().toString(),
-    content,
+    content, // 允许是空字符串（只发图片的情况）
     created_at: new Date().toISOString(),
     images,
   };
 
+  // 最新的在最上面
   posts.unshift(newPost);
 
   res.json({
@@ -128,7 +133,7 @@ app.put("/api/posts/:id", (req, res) => {
   });
 });
 
-// 删除帖子（顺便把所有图片文件删掉）
+// 删除帖子（顺便把对应图片文件删掉）
 app.delete("/api/posts/:id", (req, res) => {
   const { id } = req.params;
 
@@ -154,7 +159,7 @@ app.delete("/api/posts/:id", (req, res) => {
   res.json({ success: true });
 });
 
-// 启动服务器
+// ================== 启动服务器 ==================
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
