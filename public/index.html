@@ -73,6 +73,36 @@
     </div>
   </div>
 
+  <!-- 编辑 PIN 输入层 -->
+  <div id="pin-overlay" class="pin-overlay">
+    <div class="pin-backdrop"></div>
+    <div class="pin-dialog">
+      <h3 class="pin-title">输入编辑 PIN</h3>
+      <p class="pin-subtitle">7 位数字 · 仅用于编辑内容</p>
+      <div class="pin-boxes">
+        <div class="pin-box"></div>
+        <div class="pin-box"></div>
+        <div class="pin-box"></div>
+        <div class="pin-box"></div>
+        <div class="pin-box"></div>
+        <div class="pin-box"></div>
+        <div class="pin-box"></div>
+      </div>
+      <p class="pin-error">PIN错误</p>
+      <div class="pin-actions">
+        <button id="pin-cancel" class="btn btn-secondary">取消</button>
+      </div>
+      <!-- 实际输入框（隐藏，只用来接收键盘输入） -->
+      <input
+        id="pin-hidden-input"
+        type="password"
+        inputmode="numeric"
+        maxlength="7"
+        autocomplete="one-time-code"
+      />
+    </div>
+  </div>
+
   <script src="script.js"></script>
 </body>
 </html>
