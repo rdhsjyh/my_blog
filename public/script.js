@@ -9,23 +9,143 @@ document.addEventListener("DOMContentLoaded", () => {
   const submitBtn = document.getElementById("post-submit");
   const postsList = document.getElementById("posts-list");
 
+  // 图片上传相关（最多 9 张）
+  const imageInput = document.getElementById("post-images");
+  const previewGrid = document.getElementById("image-preview-grid");
+  const MAX_IMAGES = 9;
+
+  // currentImages: [{ file: File, url: string }]
+  let currentImages = [];
+
+  /* ====== 预览九宫格渲染 ====== */
+  function renderImagePreviews() {
+  if (!previewGrid) return;
+  previewGrid.innerHTML = "";
+
+  currentImages.forEach((item, index) => {
+    const wrapper = document.createElement("div");
+    wrapper.className = "image-thumb";
+    wrapper.dataset.index = index.toString();
+
+    const img = document.createElement("img");
+    img.src = item.url;
+    img.alt = `预览图片 ${index + 1}`;
+
+    const del = document.createElement("button");
+    del.className = "image-thumb-delete";
+    del.innerHTML = "✕";
+    del.type = "button";
+
+    // 点击 ❌ 删除
+    del.addEventListener("click", (e) => {
+      e.stopPropagation();
+      removeImageByIndex(index);
+    });
+
+    // 🌟🌟🌟【关键新增】点击预览图 → 放大预览
+    wrapper.addEventListener("click", () => {
+      // 如果处于删除模式，不放大
+      if (previewGrid.classList.contains("delete-mode")) return;
+      openLightbox(item.url);
+    });
+
+    // 📱 手机长按进入 delete-mode
+    let longPressTimer = null;
+    wrapper.addEventListener("touchstart", () => {
+      longPressTimer = setTimeout(() => {
+        previewGrid.classList.add("delete-mode");
+      }, 500);
+    });
+    wrapper.addEventListener("touchend", () => {
+      if (longPressTimer) clearTimeout(longPressTimer);
+    });
+    wrapper.addEventListener("touchmove", () => {
+      if (longPressTimer) clearTimeout(longPressTimer);
+    });
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(del);
+    previewGrid.appendChild(wrapper);
+  });
+
+  if (currentImages.length === 0) {
+    previewGrid.classList.remove("delete-mode");
+  }
+}
+
+
+  function removeImageByIndex(idx) {
+    const item = currentImages[idx];
+    if (item && item.url) {
+      URL.revokeObjectURL(item.url);
+    }
+    currentImages.splice(idx, 1);
+    renderImagePreviews();
+  }
+
+  function clearAllImages() {
+    currentImages.forEach((item) => {
+      if (item.url) URL.revokeObjectURL(item.url);
+    });
+    currentImages = [];
+    renderImagePreviews();
+    if (imageInput) imageInput.value = "";
+  }
+
+  if (imageInput) {
+    imageInput.addEventListener("change", () => {
+      const files = Array.from(imageInput.files || []);
+      if (!files.length) return;
+
+      const remaining = MAX_IMAGES - currentImages.length;
+      const toAdd = files.slice(0, remaining);
+
+      toAdd.forEach((file) => {
+        const url = URL.createObjectURL(file);
+        currentImages.push({ file, url });
+      });
+
+      if (files.length > remaining) {
+        alert(`最多只能选 ${MAX_IMAGES} 张图片，多余的我自动忽略了～`);
+      }
+
+      renderImagePreviews();
+    });
+  }
+
   /* ====== 后端 API 封装 ====== */
   const API_BASE = "/api";
 
   async function fetchPostsFromServer() {
     const res = await fetch(`${API_BASE}/posts`);
     if (!res.ok) throw new Error("Failed to fetch posts");
-    return await res.json(); // [{id, content, created_at}, ...]
+    return await res.json(); // [{id, content, created_at, images: []}, ...]
   }
 
-  async function createPostOnServer(content) {
-    const res = await fetch(`${API_BASE}/posts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
-    });
+  // 支持多图：有图片时用 FormData，没有时用 JSON
+  async function createPostOnServer(content, imagesArray) {
+    let res;
+    if (imagesArray && imagesArray.length > 0) {
+      const formData = new FormData();
+      formData.append("content", content);
+      imagesArray.forEach((item) => {
+        formData.append("images", item.file);
+      });
+
+      res = await fetch(`${API_BASE}/posts`, {
+        method: "POST",
+        body: formData,
+      });
+    } else {
+      res = await fetch(`${API_BASE}/posts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+    }
+
     if (!res.ok) throw new Error("Failed to create post");
-    return await res.json(); // {id, content, created_at}
+    return await res.json(); // {id, content, created_at, images: []}
   }
 
   async function deletePostOnServer(id) {
@@ -44,7 +164,7 @@ document.addEventListener("DOMContentLoaded", () => {
       body: JSON.stringify({ content }),
     });
     if (!res.ok) throw new Error("Failed to update post");
-    return await res.json(); // 更新后的 post
+    return await res.json();
   }
 
   /* ========= 时间格式：今天/昨天/日期+时间 ========= */
@@ -215,6 +335,21 @@ document.addEventListener("DOMContentLoaded", () => {
     div.className = "post-card enter";
     div.dataset.id = post.id;
 
+    const hasImages = Array.isArray(post.images) && post.images.length > 0;
+
+    const imageHtml = hasImages
+      ? `<div class="post-image-grid">
+          ${post.images
+            .map(
+              (src, idx) => `
+            <button type="button" class="post-image-thumb" data-full="${src}">
+              <img src="${src}" alt="Post image ${idx + 1}" loading="lazy" />
+            </button>`
+            )
+            .join("")}
+         </div>`
+      : "";
+
     div.innerHTML = `
       <div class="post-header">
         <div class="post-title">Yoyo's Note</div>
@@ -224,6 +359,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </div>
       </div>
       <div class="post-content">${post.content}</div>
+      ${imageHtml}
       <div class="post-meta">
         ${formatTime(post.created_at)}
       </div>
@@ -246,7 +382,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (deleteBtn) {
         deleteBtn.onclick = () => {
-          // 删除前也需要 PIN
           requirePin(() => {
             showModal(id, cardEl);
           });
@@ -255,12 +390,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (editBtn) {
         editBtn.onclick = () => {
-          // 编辑前需要 PIN
           requirePin(() => {
             startEditingCard(cardEl);
           });
         };
       }
+
+      // 图片点击放大
+      const thumbs = cardEl.querySelectorAll(".post-image-thumb");
+      thumbs.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const src = btn.getAttribute("data-full");
+          if (src) openLightbox(src);
+        });
+      });
     });
   }
 
@@ -302,7 +445,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const textarea = document.createElement("textarea");
     textarea.className = "post-edit-textarea";
-    textarea.value = originalText;   // 保留换行和空格
+    textarea.value = originalText;
 
     contentDiv.replaceWith(textarea);
 
@@ -370,10 +513,8 @@ document.addEventListener("DOMContentLoaded", () => {
     saveBtn.textContent = "保存中.";
 
     try {
-      const updated = await updatePostOnServer(id, raw); // 发送原始内容
-      if (!updated) {
-        throw new Error("Update returned empty");
-      }
+      const updated = await updatePostOnServer(id, raw);
+      if (!updated) throw new Error("Update returned empty");
 
       const contentDiv = document.createElement("div");
       contentDiv.className = "post-content";
@@ -418,12 +559,11 @@ document.addEventListener("DOMContentLoaded", () => {
     submitBtn.textContent = "发送中.";
 
     try {
-      const newPost = await createPostOnServer(raw);
-      if (!newPost) {
-        throw new Error("Empty new post");
-      }
+      const newPost = await createPostOnServer(raw, currentImages);
+      if (!newPost) throw new Error("Empty new post");
 
       input.value = "";
+      clearAllImages();
 
       const el = createPostElement(newPost);
       postsList.prepend(el);
@@ -489,7 +629,6 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ========= 绑定发布按钮 / 快捷键 ========= */
 
   if (submitBtn && input) {
-    // 点击发布 → 需要 PIN（但通过一次后本刷新内都不再要）
     submitBtn.addEventListener("click", () => {
       const isCompact =
         editorCard && editorCard.classList.contains("compact");
@@ -501,7 +640,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // Ctrl+Enter 快速发布 → 也要 PIN
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && e.ctrlKey) {
         e.preventDefault();
@@ -528,41 +666,33 @@ document.addEventListener("DOMContentLoaded", () => {
   const pinCancelBtn = document.getElementById("pin-cancel");
   const PIN_CODE = "1018520";
 
-  // ✅ 是否已经在本次刷新中通过过 PIN
   let pinVerified = false;
-  // 当前这次验证通过后要执行的动作
   let pinCallback = null;
 
   function updatePinBoxes(value) {
-  if (!pinBoxes) return;
+    if (!pinBoxes) return;
 
-  pinBoxes.forEach((box, index) => {
-    if (index < value.length) {
-      box.classList.add("filled");
-      box.textContent = "•";
-    } else {
-      box.classList.remove("filled");
-      box.textContent = "";
+    pinBoxes.forEach((box, index) => {
+      if (index < value.length) {
+        box.classList.add("filled");
+        box.textContent = "•";
+      } else {
+        box.classList.remove("filled");
+        box.textContent = "";
+      }
+    });
+
+    let activeIndex = value.length;
+    if (activeIndex > pinBoxes.length - 1) {
+      activeIndex = -1;
     }
-  });
 
-  // 当前输入位置：高亮第一个“空”的格子
-  // 比如输入了 3 位，就高亮第 4 个格子
-  let activeIndex = value.length;
-  if (activeIndex > pinBoxes.length - 1) {
-    // 如果已经 7 位了，就不再高亮任何格子
-    activeIndex = -1;
+    pinBoxes.forEach((box, index) => {
+      box.classList.toggle("active", index === activeIndex);
+    });
   }
 
-  pinBoxes.forEach((box, index) => {
-    box.classList.toggle("active", index === activeIndex);
-  });
-}
-
-
-  // 统一入口：需要权限的地方都用这个
   function requirePin(action) {
-    // 如果本次刷新已经验证过，直接执行
     if (pinVerified || !pinOverlay || !pinHiddenInput) {
       action();
       return;
@@ -586,7 +716,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function closePinOverlay() {
     document.body.classList.remove("pin-active");
-    // 取消/关闭时，丢弃本次回调
     pinCallback = null;
   }
 
@@ -599,7 +728,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (v.length === 7) {
         if (v === PIN_CODE) {
-          // ✔ 正确：标记已验证，本次刷新内不再需要 PIN
           pinVerified = true;
           const cb = pinCallback;
 
@@ -608,7 +736,6 @@ document.addEventListener("DOMContentLoaded", () => {
             if (typeof cb === "function") cb();
           }, 500);
         } else {
-          // ✖ 错误：抖动 + 变红 + 提示
           if (pinOverlay) {
             pinOverlay.classList.add("pin-error-state");
           }
@@ -654,18 +781,52 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (pinBoxesWrapper && pinHiddenInput) {
-  pinBoxesWrapper.addEventListener("click", () => {
-    pinHiddenInput.focus();
-  });
-}
-
-if (pinBoxes && pinHiddenInput) {
-  pinBoxes.forEach((box) => {
-    box.addEventListener("click", () => {
+    pinBoxesWrapper.addEventListener("click", () => {
       pinHiddenInput.focus();
     });
-  });
+  }
+
+  if (pinBoxes && pinHiddenInput) {
+    pinBoxes.forEach((box) => {
+      box.addEventListener("click", () => {
+        pinHiddenInput.focus();
+      });
+    });
+  }
+
+  /* ========= 图片 Lightbox ========= */
+  const lightbox = document.getElementById("image-lightbox");
+  const lightboxImg = lightbox
+  ? lightbox.querySelector(".image-lightbox-img")
+  : null;
+  const lightboxBackdrop = lightbox
+  ? lightbox.querySelector(".image-lightbox-backdrop")
+  : null;
+  const lightboxClose = lightbox
+  ? lightbox.querySelector(".image-lightbox-close")
+  : null;   // 新增
+
+  function openLightbox(src) {
+    if (!lightbox || !lightboxImg) return;
+    lightboxImg.src = src;
+    lightbox.classList.add("show");
+  }
+
+  function closeLightbox() {
+    if (!lightbox || !lightboxImg) return;
+    lightbox.classList.remove("show");
+    lightboxImg.src = "";
+  }
+
+  if (lightboxBackdrop) {
+  lightboxBackdrop.addEventListener("click", closeLightbox);
 }
+if (lightboxClose) {
+  lightboxClose.addEventListener("click", closeLightbox);
+}
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeLightbox();
+});
 
   /* ========= 初始化 ========= */
   (async () => {

@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <title>Yoyo's Blog</title>
+  
+  <!-- 新增：网页小图标（favicon） -->
+  <link rel="icon" type="image/png" href="favicon.png" />
+  
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -24,11 +28,16 @@
   <main class="main">
     <!-- 首页 -->
     <section id="home" class="section section-active">
-      <div class="hero">
-        <h1 class="hero-title">Yoyo's Blog</h1>
-        <p class="hero-subtitle">写给悠悠的小世界 💛</p>
-      </div>
-    </section>
+  <div class="hero">
+    <h1 class="hero-title">Yoyo's Blog</h1>
+    <p class="hero-subtitle">写给悠悠的小世界 💛</p>
+
+    <!-- 新增主页下方文案 -->
+    <p class="hero-quote">
+      “像叶子要从痛苦的蜷缩中舒展一样，人也要不暇思索地朦胧中挣脱开来”
+    </p>
+  </div>
+</section>
 
     <!-- Posts 页面 -->
     <section id="posts" class="section">
@@ -43,6 +52,24 @@
             rows="4"
             placeholder="写点什么吧：今天学到了什么、一个小情绪、一句想对涵涵说的话…"
           ></textarea>
+
+          <!-- 图片上传区域 -->
+          <div class="editor-image">
+            <label class="image-upload-label">
+              📷 上传图片
+              <input
+                type="file"
+                id="post-images"
+                accept="image/*"
+                multiple
+              />
+            </label>
+            <span class="image-hint">最多 9 张</span>
+          </div>
+
+          <!-- 预览九宫格 -->
+          <div id="image-preview-grid" class="image-preview-grid"></div>
+
           <div class="editor-footer">
             <span class="hint">Ctrl + Enter 快速发布</span>
             <button id="post-submit">发布</button>
@@ -101,6 +128,14 @@
         autocomplete="one-time-code"
       />
     </div>
+  </div>
+
+  <!-- 图片放大查看（lightbox） -->
+  <div id="image-lightbox" class="image-lightbox">
+    <div class="image-lightbox-backdrop"></div>
+    <img class="image-lightbox-img" alt="Preview" />
+    <!-- 新增：右上角圆形 X 按钮 -->
+    <button type="button" class="image-lightbox-close">✕</button>
   </div>
 
   <script src="script.js"></script>

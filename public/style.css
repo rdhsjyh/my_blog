@@ -93,10 +93,9 @@ body {
 /* ========== 主内容区 ========== */
 .main {
   flex: 1;
-  position: relative;   /* 让 section 绝对定位在 main 内 */
-  /* 原来是 overflow: hidden; 这里改为只隐藏横向，允许纵向滚动 */
+  position: relative;
   overflow-x: hidden;
-  overflow-y: auto;   /* 纵向可以滚动，顶部导航就相当于“固定”在上面 */
+  overflow-y: auto;
 }
 
 /* 每个页面 section：重叠在 main 内，通过透明度+动画控制 */
@@ -123,13 +122,13 @@ body {
   pointer-events: auto;
 }
 
-/* 首页：标题在黄金分割附近（大约上方 18vh） */
+/* 首页：标题在黄金分割附近 */
 #home {
   justify-content: flex-start;
 }
 
 #home .hero {
-  margin-top: 18vh; /* 可以 16~20 之间微调 */
+  margin-top: 18vh;
 }
 
 /* ========== 首页内容 ========== */
@@ -148,21 +147,30 @@ body {
   color: var(--text-muted);
 }
 
+.hero-quote {
+  margin-top: 16px;
+  font-size: 15px;
+  color: #cccccc;
+  line-height: 1.7;
+  max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;
+  font-style: italic;
+}
+
 /* ========== Posts 页面内容 ========== */
-/* Posts 页面整体容器：默认居中偏下（类似首页黄金分割） */
 .posts-page {
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
 
-  margin-top: 18vh;              /* 没有内容时的位置 */
-  transition: margin-top 0.2s ease;  /* 平滑移动 */
+  margin-top: 18vh;
+  transition: margin-top 0.2s ease;
 }
 
-/* 当有帖子时，整体往上收一点 */
 #posts.has-posts .posts-page {
-  margin-top: 8vh;               /* 有内容时的位置，可按手感改 6~10 */
+  margin-top: 8vh;
 }
 
 .page-title {
@@ -171,7 +179,7 @@ body {
   margin-bottom: 32px;
 }
 
-/* 统一宽度：输入卡片、文章列表、文章卡片 */
+/* 统一宽度 */
 .card,
 .posts-list,
 .post-card {
@@ -188,7 +196,6 @@ body {
   box-shadow: 0 18px 40px var(--shadow-strong);
   margin-bottom: 26px;
 }
-/* 让编辑器卡片可以作为绝对定位的参考 */
 .card.editor {
   position: relative;
 }
@@ -199,7 +206,7 @@ body {
   margin-bottom: 12px;
 }
 
-/* 恢复原来那种深色、圆角的文本框，并禁止鼠标拖拽 */
+/* 文本框 */
 .editor textarea {
   width: 100%;
   min-height: 80px;
@@ -211,10 +218,9 @@ body {
   border-radius: 10px;
   font-size: 14px;
   line-height: 1.7;
-  resize: none;          /* 不允许鼠标拉动大小 */
+  resize: none;
 }
 
-/* compact 状态下只调整行高更紧凑一些 */
 .editor.compact textarea {
   line-height: 1.3;
 }
@@ -223,11 +229,100 @@ body {
   color: var(--text-muted);
 }
 
+/* 图片上传区域 */
+.editor-image {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.image-upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px dashed #555;
+  cursor: pointer;
+  user-select: none;
+}
+
+.image-upload-label:hover {
+  border-color: #888;
+}
+
+.image-upload-label input {
+  display: none;
+}
+
+.image-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* 预览九宫格 */
+.image-preview-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+
+  max-width: 360px;        /* 新增：整体宽度限制 */
+  align-self: flex-start;  /* 新增：左对齐的小窗 */
+}
+
+.image-thumb {
+  position: relative;
+  width: 100%;
+  padding-bottom: 100%; /* 正方形 */
+  border-radius: 8px;
+  overflow: hidden;
+  background: #202020;
+}
+
+.image-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 删除按钮（PC：悬停显示；手机 delete-mode：常显） */
+.image-thumb-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.image-thumb:hover .image-thumb-delete {
+  opacity: 1;
+}
+
+/* 手机长按进入 delete-mode */
+.image-preview-grid.delete-mode .image-thumb-delete {
+  opacity: 1;
+}
+
 .editor-footer {
   margin-top: 12px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;      /* 新增：不要被压缩 */
 }
 
 .hint {
@@ -269,13 +364,11 @@ body {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
-/* 新增时入场动画初始状态 */
 .post-card.enter {
   opacity: 0;
   transform: translateY(10px);
 }
 
-/* 删除时离场状态 */
 .post-card.leaving {
   opacity: 0;
   transform: translateY(10px);
@@ -311,7 +404,41 @@ body {
   margin: 12px 0;
   font-size: 14px;
   line-height: 1.8;
-  white-space: pre-wrap;  /* ⭐ 让换行正常显示 */
+  white-space: pre-wrap;
+}
+
+/* 帖子里的九宫格图片 */
+.post-image-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+
+  max-width: 360px;        /* 新增 */
+  align-self: flex-start;  /* 新增 */
+}
+
+.post-image-thumb {
+  position: relative;
+  padding-bottom: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+  background: #202020;
+  cursor: pointer;
+}
+
+.post-image-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.15s ease;
+}
+
+.post-image-thumb:hover img {
+  transform: scale(1.03);
 }
 
 .post-meta {
@@ -319,7 +446,7 @@ body {
   color: var(--text-muted);
 }
 
-/* ========== Footer 永远在最底部 ========== */
+/* ========== Footer ========== */
 .footer {
   width: 100%;
   text-align: center;
@@ -329,7 +456,7 @@ body {
   border-top: 1px solid #2c2c2c;
 }
 
-/* ========== 自定义删除确认弹窗 ========== */
+/* ========== 自定义删除确认弹窗（原样保留） ========== */
 .modal {
   position: fixed;
   inset: 0;
@@ -419,9 +546,7 @@ body {
   background: #ff5252;
 }
 
-/* ========== 页面切换动画（主页 ↔ 文章） ========== */
-/* 修正方向：主页->文章：home 左出 / posts 右入；文章->主页：posts 右出 / home 左入 */
-
+/* ========== 页面切换动画 ========== */
 @keyframes slideOutRight {
   from { opacity: 1; transform: translateX(0); }
   to   { opacity: 0; transform: translateX(40px); }
@@ -442,7 +567,6 @@ body {
   to   { opacity: 1; transform: translateX(0); }
 }
 
-/* 0.18s 以内的小动画，既顺滑又不拖沓 */
 .slide-out-right {
   animation: slideOutRight 0.18s ease forwards;
 }
@@ -462,8 +586,6 @@ body {
 /* =========================
    New Post 编辑器：收起 / sticky
    ========================= */
-
-/* 让 textarea 和 footer 的高度 / 透明度可以动画 */
 .editor textarea,
 .editor-footer {
   transition:
@@ -474,42 +596,38 @@ body {
     padding-bottom 0.2s ease;
 }
 
-/* 当加上 .compact 时：New Post 变成粘在顶部的小条 */
 .editor.compact {
-  position: sticky;              /* 相对于 .main 这个滚动容器粘住 */
-  top: 0;                        /* 紧贴 main 顶部（导航在外面，不影响） */
+  position: sticky;
+  top: 0;
   z-index: 5;
 }
 
-/* compact 时 footer 自己收起，但允许里面的按钮“飞出去”显示 */
 .editor.compact .editor-footer {
   max-height: 0;
   margin-top: 0;
   padding-top: 0;
   padding-bottom: 0;
-  overflow: visible; /* 让里面绝对定位的按钮可以露出来 */
+  overflow: visible;
 }
 
-/* 隐藏左下角的提示文字 */
 .editor.compact .editor-footer .hint {
   display: none;
 }
 
-/* 把发布/↑按钮挪到卡片右上角，和 New Post 一条水平线 */
 .editor.compact #post-submit {
   position: absolute;
-  top: 20px;   /* 对齐 .card 的 padding-top */
-  right: 24px; /* 对齐 .card 的 padding-right，x 轴和原来右下角一致 */
+  top: 20px;
+  right: 24px;
 }
 
-/* 右上角编辑 + 删除按钮容器 */
+/* 右上角编辑 + 删除按钮 */
 .post-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-/* 编辑按钮：样式和删除类似，颜色稍微温柔一点 */
+/* 编辑按钮 */
 .edit-btn {
   background: none;
   border: none;
@@ -576,7 +694,6 @@ body {
   background: #ffc447;
 }
 
-/* 编辑状态下可以稍微淡一点时间 */
 .post-card.editing .post-meta {
   opacity: 0.7;
 }
@@ -616,10 +733,8 @@ body {
 }
 
 /* =========================
-   PIN 验证：模糊 + 中心小方格
+   PIN 验证：模糊 + 小方格
    ========================= */
-
-/* 整体模糊（高斯） */
 body.pin-active .topbar,
 body.pin-active .main,
 body.pin-active .footer,
@@ -631,7 +746,6 @@ body.pin-active #confirm-modal {
   user-select: none;
 }
 
-/* PIN 覆盖层 */
 .pin-overlay {
   position: fixed;
   inset: 0;
@@ -682,7 +796,6 @@ body.pin-active .pin-overlay {
   color: var(--text-muted);
 }
 
-/* 7 个小方格横排 */
 .pin-boxes {
   display: flex;
   gap: 8px;
@@ -708,14 +821,11 @@ body.pin-active .pin-overlay {
   background: #30363b;
 }
 
-/* 当前输入位置高亮：白色边框提示 */
 .pin-box.active {
   border-color: #ffffff;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
 }
 
-
-/* 错误提示小字 */
 .pin-error {
   margin-top: 8px;
   font-size: 12px;
@@ -734,11 +844,9 @@ body.pin-active .pin-overlay {
 #pin-hidden-input {
   position: absolute;
   opacity: 0;
-  /* 允许接收键盘事件，方便聚焦后输入数字 */
   pointer-events: auto;
 }
 
-/* 错误态：小方格变红 & 抖动 */
 .pin-overlay.pin-error-state .pin-box {
   border-color: #ff6b6b;
   background: rgba(255, 107, 107, 0.1);
@@ -748,7 +856,6 @@ body.pin-active .pin-overlay {
   opacity: 1;
 }
 
-/* 抖动动画 */
 @keyframes pinShake {
   0%   { transform: translateX(0); }
   20%  { transform: translateX(-4px); }
@@ -762,10 +869,66 @@ body.pin-active .pin-overlay {
   animation: pinShake 0.28s ease;
 }
 
-/* PIN 弹层在手机上的宽度 */
 @media (max-width: 640px) {
   .pin-dialog {
     width: 86%;
     min-width: 0;
   }
+}
+
+/* ========== 图片 Lightbox ========== */
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 90;
+}
+
+.image-lightbox.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.image-lightbox-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.image-lightbox-img {
+  position: relative;
+  z-index: 91;
+  max-width: 92vw;
+  max-height: 90vh;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+}
+
+/* 新增：右上角圆形 X 按钮 */
+.image-lightbox-close {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: 92;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.image-lightbox-close:hover {
+  background: rgba(0, 0, 0, 0.85);
 }
