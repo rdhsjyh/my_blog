@@ -1,0 +1,632 @@
+/* ========== 全局基础设置 ========== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: "Microsoft YaHei", "PingFang SC", -apple-system, BlinkMacSystemFont,
+    system-ui, sans-serif;
+  background: #1a1a1a;
+  color: #e6e6e6;
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* 颜色变量 */
+:root {
+  --bg-main: #1a1a1a;
+  --bg-card: #262626;
+  --bg-card-alt: #2d2d2d;
+  --text-main: #e6e6e6;
+  --text-muted: #999999;
+  --border-soft: #3a3a3a;
+  --shadow-strong: rgba(0, 0, 0, 0.65);
+  --shadow-soft: rgba(0, 0, 0, 0.45);
+}
+
+/* ========== 顶部导航栏 ========== */
+.topbar {
+  width: 100%;
+  padding: 16px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #1f1f1f;
+  border-bottom: 1px solid #2c2c2c;
+  backdrop-filter: blur(12px);
+  z-index: 10;
+}
+
+/* 左侧：标题 + 星星 */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.site-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.site-icon {
+  font-size: 16px;
+  line-height: 1;
+  display: inline-block;
+}
+
+/* 右侧导航按钮 */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.nav-link {
+  background: none;
+  border: none;
+  color: #e6e6e6;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 6px 6px;
+  transition: color 0.15s ease;
+}
+
+.nav-link:hover {
+  color: #ffffff;
+}
+
+.nav-link.active {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ========== 主内容区 ========== */
+.main {
+  flex: 1;
+  position: relative;   /* 让 section 绝对定位在 main 内 */
+  overflow: hidden;     /* 动画移出时不出现滚动条 */
+}
+
+/* 每个页面 section：重叠在 main 内，通过透明度+动画控制 */
+.section {
+  position: absolute;
+  inset: 0;
+  padding: 40px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 只对文章页：从上方开始排，不要垂直居中 */
+#posts {
+  justify-content: flex-start;
+}
+
+
+.section-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 首页：标题在黄金分割附近（大约上方 18vh） */
+#home {
+  justify-content: flex-start;
+}
+
+#home .hero {
+  margin-top: 18vh; /* 可以 16~20 之间微调 */
+}
+
+/* ========== 首页内容 ========== */
+.hero {
+  text-align: center;
+}
+
+.hero-title {
+  font-size: 42px;
+  font-weight: 800;
+  margin-bottom: 12px;
+}
+
+.hero-subtitle {
+  font-size: 16px;
+  color: var(--text-muted);
+}
+
+/* ========== Posts 页面内容 ========== */
+/* Posts 页面整体容器：默认居中偏下（类似首页黄金分割） */
+.posts-page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  margin-top: 18vh;              /* 没有内容时的位置 */
+  transition: margin-top 0.2s ease;  /* 平滑移动 */
+}
+
+/* 当有帖子时，整体往上收一点 */
+#posts.has-posts .posts-page {
+  margin-top: 8vh;               /* 有内容时的位置，可按手感改 6~10 */
+}
+
+
+.page-title {
+  font-size: 32px;
+  font-weight: 800;
+  margin-bottom: 32px;
+}
+
+/* 统一宽度：输入卡片、文章列表、文章卡片 */
+.card,
+.posts-list,
+.post-card {
+  width: 100%;
+  max-width: 760px;
+}
+
+/* New Post 卡片 */
+.card {
+  background: var(--bg-card);
+  border-radius: 14px;
+  padding: 20px 24px;
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 18px 40px var(--shadow-strong);
+  margin-bottom: 26px;
+}
+/* 让编辑器卡片可以作为绝对定位的参考 */
+.card.editor {
+  position: relative;
+}
+
+
+.card-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+/* 恢复原来那种深色、圆角的文本框，并禁止鼠标拖拽 */
+.editor textarea {
+  width: 100%;
+  min-height: 80px;
+  background: var(--bg-card-alt);
+  border: none;
+  outline: none;
+  padding: 12px 14px;
+  color: var(--text-main);
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.7;
+  resize: none;          /* 不允许鼠标拉动大小 */
+}
+
+/* compact 状态下只调整行高更紧凑一些 */
+.editor.compact textarea {
+  line-height: 1.3;
+}
+
+
+
+.editor textarea::placeholder {
+  color: var(--text-muted);
+}
+
+.editor-footer {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.editor-footer button {
+  padding: 6px 20px;
+  border-radius: 6px;
+  background: #f2f2f2;
+  border: none;
+  font-weight: 600;
+  color: #000;
+  cursor: pointer;
+}
+
+.editor-footer button:hover {
+  opacity: 0.9;
+}
+
+/* 帖子列表容器 */
+.posts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* 单条帖子卡片 */
+.post-card {
+  background: var(--bg-card);
+  padding: 20px 24px;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  box-shadow: 0 18px 40px var(--shadow-soft);
+
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* 新增时入场动画初始状态 */
+.post-card.enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+/* 删除时离场状态 */
+.post-card.leaving {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.post-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.post-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* 删除按钮 */
+.delete-btn {
+  background: none;
+  border: none;
+  color: #bbbbbb;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 4px;
+  transition: color 0.15s ease;
+}
+
+.delete-btn:hover {
+  color: #ff6b6b;
+}
+
+.post-content {
+  margin: 12px 0;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.post-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ========== Footer 永远在最底部 ========== */
+.footer {
+  width: 100%;
+  text-align: center;
+  padding: 20px;
+  font-size: 12px;
+  color: #aaaaaa;
+  border-top: 1px solid #2c2c2c;
+}
+
+/* ========== 自定义删除确认弹窗 ========== */
+.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 50;
+}
+
+.modal.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.modal-dialog {
+  position: relative;
+  z-index: 60;
+  width: 320px;
+  background: #2b2b2b;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #3a3a3a;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+
+  transform: translateY(8px) scale(0.97);
+  opacity: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.modal.show .modal-dialog {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.modal-text {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-secondary {
+  background: #3a3a3a;
+  color: #e6e6e6;
+}
+
+.btn-secondary:hover {
+  background: #4a4a4a;
+}
+
+.btn-danger {
+  background: #ff7070;
+  color: #000;
+  font-weight: 600;
+}
+
+.btn-danger:hover {
+  background: #ff5252;
+}
+
+/* ========== 页面切换动画（主页 ↔ 文章） ========== */
+/* 修正方向：主页->文章：home 左出 / posts 右入；文章->主页：posts 右出 / home 左入 */
+
+@keyframes slideOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(40px); }
+}
+
+@keyframes slideOutLeft {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-40px); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* 0.18s 以内的小动画，既顺滑又不拖沓 */
+.slide-out-right {
+  animation: slideOutRight 0.18s ease forwards;
+}
+
+.slide-out-left {
+  animation: slideOutLeft 0.18s ease forwards;
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.18s ease forwards;
+}
+
+.slide-in-right {
+  animation: slideInRight 0.18s ease forwards;
+}
+
+/* ========== 手机端适配 ========== */
+@media (max-width: 640px) {
+  .topbar {
+    padding: 12px 16px;
+  }
+
+  .hero-title {
+    font-size: 32px;
+  }
+
+  .page-title {
+    font-size: 26px;
+  }
+
+  .card,
+  .posts-list,
+  .post-card {
+    max-width: 100%;
+    padding: 16px;
+  }
+
+  .topbar-right {
+    gap: 20px;
+  }
+
+  .nav-link {
+    font-size: 15px;
+  }
+
+  .modal-dialog {
+    width: 90%;
+  }
+}
+
+/* =========================
+   让 main 可以纵向滚动
+   ========================= */
+
+.main {
+  /* 原来是 overflow: hidden; 这里用这一条覆盖它 */
+  overflow-x: hidden;
+  overflow-y: auto;   /* 纵向可以滚动，顶部导航就相当于“固定”在上面 */
+}
+
+/* =========================
+   New Post 编辑器：收起 / sticky
+   ========================= */
+   
+
+/* 让 textarea 和 footer 的高度 / 透明度可以动画 */
+.editor textarea,
+.editor-footer {
+  transition:
+    max-height 0.2s ease,
+    opacity 0.2s ease,
+    margin-top 0.2s ease,
+    padding-top 0.2s ease,
+    padding-bottom 0.2s ease;
+}
+
+/* 当加上 .compact 时：New Post 变成粘在顶部的小条 */
+.editor.compact {
+  position: sticky;              /* 相对于 .main 这个滚动容器粘住 */
+  top: 0;                        /* 紧贴 main 顶部（导航在外面，不影响） */
+  z-index: 5;
+  box-shadow: 0 10px 30px var(--shadow-strong);
+}
+
+
+/* compact 时 footer 自己收起，但允许里面的按钮“飞出去”显示 */
+.editor.compact .editor-footer {
+  max-height: 0;
+  margin-top: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  overflow: visible; /* 让里面绝对定位的按钮可以露出来 */
+}
+
+/* 隐藏左下角的提示文字 */
+.editor.compact .editor-footer .hint {
+  display: none;
+}
+
+/* 把发布/↑按钮挪到卡片右上角，和 New Post 一条水平线 */
+.editor.compact #post-submit {
+  position: absolute;
+  top: 20px;   /* 对齐 .card 的 padding-top */
+  right: 24px; /* 对齐 .card 的 padding-right，x 轴和原来右下角一致 */
+}
+
+/* 右上角编辑 + 删除按钮容器 */
+.post-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 编辑按钮：样式和删除类似，颜色稍微温柔一点 */
+.edit-btn {
+  background: none;
+  border: none;
+  color: #b6e3ff;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  transition: color 0.15s ease;
+}
+
+.edit-btn:hover {
+  color: #7cdcff;
+}
+
+/* 编辑状态下的 textarea */
+.post-edit-textarea {
+  width: 100%;
+  min-height: 60px;
+  background: var(--bg-card-alt);
+  border-radius: 10px;
+  border: none;
+  outline: none;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-main);
+  resize: none;
+  margin-top: 10px;
+}
+
+/* 编辑时的按钮区域 */
+.post-edit-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn-edit-cancel,
+.btn-edit-save {
+  padding: 4px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.btn-edit-cancel {
+  background: #3a3a3a;
+  color: #e6e6e6;
+}
+
+.btn-edit-cancel:hover {
+  background: #4a4a4a;
+}
+
+.btn-edit-save {
+  background: #ffd36b;
+  color: #000;
+  font-weight: 600;
+}
+
+.btn-edit-save:hover {
+  background: #ffc447;
+}
+
+/* 编辑状态下可以稍微淡一点时间 */
+.post-card.editing .post-meta {
+  opacity: 0.7;
+}
+

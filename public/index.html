@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>Yoyo's Blog</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- 顶部导航 -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="site-title">Yoyo's Blog</span>
+      <span class="site-icon">✨</span>
+    </div>
+
+    <nav class="topbar-right">
+      <button class="nav-link active" data-section="home">主页</button>
+      <button class="nav-link" data-section="posts">文章</button>
+    </nav>
+  </header>
+
+  <!-- 主体 -->
+  <main class="main">
+    <!-- 首页 -->
+    <section id="home" class="section section-active">
+      <div class="hero">
+        <h1 class="hero-title">Yoyo's Blog</h1>
+        <p class="hero-subtitle">写给悠悠的小世界 💛</p>
+      </div>
+    </section>
+
+    <!-- Posts 页面 -->
+    <section id="posts" class="section">
+      <div class="posts-page">
+        <h1 class="page-title">Posts</h1>
+
+        <!-- 编辑器 -->
+        <div class="card editor">
+          <h2 class="card-title">New Post</h2>
+          <textarea
+            id="post-input"
+            rows="4"
+            placeholder="写点什么吧：今天学到了什么、一个小情绪、一句想对涵涵说的话…"
+          ></textarea>
+          <div class="editor-footer">
+            <span class="hint">Ctrl + Enter 快速发布</span>
+            <button id="post-submit">发布</button>
+          </div>
+        </div>
+
+        <!-- 已发布的帖子 -->
+        <div id="posts-list" class="posts-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="footer">
+    <small>© 2025 Yoyo’s Blog · Designed for 悠悠 💛</small>
+  </footer>
+
+  <!-- 自定义删除确认弹窗 -->
+  <div id="confirm-modal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog">
+      <h3 class="modal-title">确定要删除这条内容吗？</h3>
+      <p class="modal-text">删除后将无法恢复哦。</p>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn btn-secondary">取消</button>
+        <button id="modal-confirm" class="btn btn-danger">删除</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
