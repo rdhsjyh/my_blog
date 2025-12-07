@@ -17,6 +17,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // currentImages: [{ file: File, url: string }]
   let currentImages = [];
 
+  // ⭐ 新增：刚刚从主页切到文章的标记
+  let justSwitchedToPosts = false;
+
   /* ====== 预览九宫格渲染 ====== */
   function renderImagePreviews() {
   if (!previewGrid) return;
@@ -212,22 +215,42 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  /* ========= 页面切换动画 ========= */
-  function switchSection(targetId, direction) {
-    const current = document.querySelector(".section.section-active");
-    const next = document.getElementById(targetId);
-    if (!next || current === next) return;
+    /* ========= 页面切换：只用淡入淡出，不做滑动 ========= */
+  /* ========= 页面切换：左右滑动 + 透明度，绝对不动 Y ========= */
+// 所有 slide 动画相关的 class
+const SLIDE_CLASSES = [
+  "slide-in-left",
+  "slide-in-right",
+  "slide-out-left",
+  "slide-out-right",
+];
 
-    let outClass, inClass;
-    if (direction === "to-posts") {
-      outClass = "slide-out-left";
-      inClass = "slide-in-right";
-    } else {
-      outClass = "slide-out-right";
-      inClass = "slide-in-left";
-    }
+/* ========= 页面切换：左右滑动 + 透明度，绝对不动 Y ========= */
+function switchSection(targetId, direction) {
+  const current = document.querySelector(".section.section-active");
+  const next = document.getElementById(targetId);
+  if (!next || current === next) return;
 
-    next.classList.add("section-active", inClass);
+  let outClass, inClass;
+  if (direction === "to-posts") {
+    outClass = "slide-out-left";
+    inClass = "slide-in-right";
+  } else {
+    outClass = "slide-out-right";
+    inClass = "slide-in-left";
+  }
+
+  // 1️⃣ 先把旧的动画 class 全部清理掉，避免叠加
+  [current, next].forEach((el) => {
+    if (!el) return;
+    el.classList.remove(...SLIDE_CLASSES);
+  });
+
+  // 2️⃣ 新页面：激活 + 加“滑入”动画
+  next.classList.add("section-active", inClass);
+
+  // 3️⃣ 旧页面：加“滑出”动画，动画结束后隐藏
+  if (current) {
     current.classList.add(outClass);
 
     current.addEventListener(
@@ -237,33 +260,40 @@ document.addEventListener("DOMContentLoaded", () => {
       },
       { once: true }
     );
-
-    next.addEventListener(
-      "animationend",
-      () => {
-        next.classList.remove(inClass);
-      },
-      { once: true }
-    );
   }
 
-  navLinks.forEach((btn) => {
-    const targetId = btn.getAttribute("data-section");
-    if (!targetId) return;
+  // ⚠️ 注意：不再在动画结束时删掉 next 的 inClass
+  // 保留 slide-in-right / slide-in-left，动画结束后会停在 transform: translateX(0)
+  // 这样就不会在最后一帧从“有 transform”跳回“无 transform”，避免那一下抖动
+}
 
-    btn.addEventListener("click", () => {
-      navLinks.forEach((x) => x.classList.remove("active"));
-      btn.classList.add("active");
 
-      const direction = targetId === "posts" ? "to-posts" : "to-home";
-      switchSection(targetId, direction);
 
-      if (targetId === "posts" && mainEl) {
-        mainEl.scrollTo({ top: 0, behavior: "auto" });
-        requestAnimationFrame(handleScrollForEditor);
-      }
-    });
+    const body = document.body;
+
+    navLinks.forEach((btn) => {
+  const targetId = btn.getAttribute("data-section");
+  if (!targetId) return;
+
+  btn.addEventListener("click", () => {
+    navLinks.forEach((x) => x.classList.remove("active"));
+    btn.classList.add("active");
+
+    const direction = targetId === "posts" ? "to-posts" : "to-home";
+
+    switchSection(targetId, direction);
+
+    // 切换到文章页时，只保证编辑器是非 compact 状态（不会改变纵向位置）
+    if (targetId === "posts") {
+      body.classList.add("posts-bg");
+      handleScrollForEditor();   // 仍然保持编辑器非 compact
+    } else {
+      body.classList.remove("posts-bg");
+    }
   });
+});
+
+
 
   /* ========= 自定义删除确认弹窗 ========= */
   const modal = document.getElementById("confirm-modal");
@@ -607,29 +637,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ========= New Post 吸顶 / 收起逻辑 ========= */
 
+      /* ========= New Post 吸顶 / 收起逻辑（暂时关闭 compact） ========= */
+
   function handleScrollForEditor() {
     if (!mainEl || !editorCard) return;
 
-    if (!postsSection.classList.contains("section-active")) {
-      editorCard.classList.remove("compact");
-      if (submitBtn) submitBtn.textContent = "发布";
-      return;
-    }
-
-    const mainRect = mainEl.getBoundingClientRect();
-    const editorRect = editorCard.getBoundingClientRect();
-
-    const threshold = mainRect.top + 16;
-    const shouldCompact = editorRect.top <= threshold;
-
-    if (shouldCompact && !editorCard.classList.contains("compact")) {
-      editorCard.classList.add("compact");
-      if (submitBtn && !submitBtn.disabled) submitBtn.textContent = "✈";
-    } else if (!shouldCompact && editorCard.classList.contains("compact")) {
-      editorCard.classList.remove("compact");
-      if (submitBtn && !submitBtn.disabled) submitBtn.textContent = "发布";
+    // 不管在什么状态，永远保持非 compact、按钮文字为“发布”
+    editorCard.classList.remove("compact");
+    if (submitBtn && !submitBtn.disabled) {
+      submitBtn.textContent = "发布";
     }
   }
+
+
 
   if (mainEl) {
     mainEl.addEventListener("scroll", handleScrollForEditor);
@@ -637,17 +657,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ========= 绑定发布按钮 / 快捷键 ========= */
 
-  if (submitBtn && input) {
+    if (submitBtn && input) {
     submitBtn.addEventListener("click", () => {
-      const isCompact =
-        editorCard && editorCard.classList.contains("compact");
-
       requirePin(() => {
+        // 不再根据 compact 决定是否滚回顶部，有需要之后再单独设计
         publishPost({
-          scrollToTop: isCompact,
+          scrollToTop: false,
         });
       });
     });
+
 
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && e.ctrlKey) {

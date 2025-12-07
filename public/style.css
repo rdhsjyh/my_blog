@@ -98,24 +98,38 @@ body {
   overflow-y: auto;
 }
 
-/* 每个页面 section：重叠在 main 内，通过透明度+动画控制 */
+/* 每个页面 section：叠在 main 里，通过透明度切换，不再负责布局 */
 .section {
   position: absolute;
   inset: 0;
-  padding: 40px 16px;
+  padding: 0 16px;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;   /* ⭐ 只做淡入淡出 */
+}
+
+/* 当前显示的页面 */
+.section-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 首页：自己用 flex 居中内容 */
+#home {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
-  opacity: 0;
-  pointer-events: none;
+  overflow: hidden;
 }
 
-/* 只对文章页：从上方开始排，不要垂直居中 */
+/* Posts：普通 block 布局，由内部 .posts-page 绝对定位控制位置 */
 #posts {
-  justify-content: flex-start;
+  position: relative;
+  min-height: 100%;
 }
+
 
 .section-active {
   opacity: 1;
@@ -138,9 +152,38 @@ body {
   background-position: center;
   background-repeat: no-repeat;
 
-  opacity: 0.4;
-  filter: blur(1px) contrast(1.15);;
+  opacity: 0.7;
+  filter: blur(3px)
+          contrast(1.00)
+          saturate(1.00)
+          brightness(0.95);
   z-index: -1;
+}
+
+#posts {
+  position: relative;
+  min-height: 100%;  /* 让 section 至少撑满 main */
+}
+
+/* 文章页的背景：挂在 body 上，用类名控制是否显示 */
+body.posts-bg::before {
+  content: "";
+  position: fixed;         /* ⭐ 永远贴在视口，不随 .main 滚 */
+  inset: 0;
+  background-image: url("posts-bg.jpg");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  opacity: 0.65;
+  filter: blur(0.5px) contrast(1.12) saturate(1.28) brightness(1.05);
+  z-index: -1;             /* 在所有内容后面 */
+}
+
+
+/* section 默认 padding 会把内容往下推，这里去掉顶部 padding */
+.section#posts {
+  padding: 0 16px;
 }
 
 /* 首页文案：浮在背景图上，取消额外的下压距离 */
@@ -180,24 +223,27 @@ body {
 
 /* ========== Posts 页面内容 ========== */
 .posts-page {
+  position: absolute;    /* ⭐ 关键：自己固定位置 */
+  top: 12vh;             /* ⭐ 离顶部 12vh，可以改成你喜欢的高度 */
+  left: 0;
+  right: 0;
+
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-
-  margin-top: 18vh;
-  transition: margin-top 0.2s ease;
 }
 
-#posts.has-posts .posts-page {
-  margin-top: 8vh;
-}
-
+/* 删掉这个规则：
+#posts.has-posts .posts-page { ... }
+*/
 .page-title {
   font-size: 32px;
   font-weight: 800;
+  margin-top: 0;        /* ⭐ 清掉默认的上外边距 */
   margin-bottom: 32px;
 }
+
 
 /* 统一宽度 */
 .card,
@@ -474,6 +520,8 @@ body {
   font-size: 12px;
   color: #aaaaaa;
   border-top: 1px solid #2c2c2c;
+  background: #1a1a1a; /* ⭐ 新增：和 body 一样的底色 */
+  /* 或者用变量：background: var(--bg-main); */
 }
 
 /* ========== 自定义删除确认弹窗（原样保留） ========== */
@@ -617,9 +665,9 @@ body {
 }
 
 .editor.compact {
-  position: sticky;
-  top: 0;
-  z-index: 5;
+  position: relative;   /* 和普通卡片一样，用 card.editor 的定位 */
+  top: auto;            /* 取消 top:0 的吸顶效果 */
+  z-index: 5;           /* 保留在同一层级即可 */
 }
 
 .editor.compact .editor-footer {
