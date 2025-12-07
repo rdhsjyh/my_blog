@@ -122,14 +122,34 @@ body {
   pointer-events: auto;
 }
 
-/* 首页：标题在黄金分割附近 */
+/* 首页：整块主区域都是背景图，内容垂直居中 */
 #home {
-  justify-content: flex-start;
+  justify-content: center;      /* 中间对齐，不再往下挤 */
+  overflow: hidden;
 }
 
-#home .hero {
-  margin-top: 18vh;
+/* 首页背景图：从页头下方到页脚上方，铺满整个 main 区域 */
+#home::before {
+  content: "";
+  position: absolute;
+  inset: 0;                     /* 把整个 #home 区域都盖满 */
+  background-image: url("home-bg.jpg");  /* 这里还是你的那张照片 */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  opacity: 0.4;
+  filter: blur(1px) contrast(1.15);;
+  z-index: -1;
 }
+
+/* 首页文案：浮在背景图上，取消额外的下压距离 */
+#home .hero {
+  margin-top: 0;                /* ⭐ 去掉 18vh，不再只占上面一条 */
+  position: relative;
+  z-index: 1;
+}
+
 
 /* ========== 首页内容 ========== */
 .hero {
