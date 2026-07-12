@@ -9,30 +9,224 @@ document.addEventListener("DOMContentLoaded", () => {
   const submitBtn = document.getElementById("post-submit");
   const postsList = document.getElementById("posts-list");
 
-  // 图片上传相关（最多 9 张）
-  const imageInput = document.getElementById("post-images");
-  const previewGrid = document.getElementById("image-preview-grid");
-  const MAX_IMAGES = 9;
+  const MAX_CONTENT_CHARS = 10000;
 
-  // currentImages: [{ file: File, url: string }]
-  let currentImages = [];
+  // 图片 / 视频上传相关（最多 9 个附件）
+  const imageInput = document.getElementById("post-images");
+  const videoInput = document.getElementById("post-videos");
+  const previewGrid = document.getElementById("image-preview-grid");
+  const MAX_MEDIA = 9;
+
+  // currentMedia: [{ file: File, url: string, type: "image" | "video" }]
+  let currentMedia = [];
 
   // ⭐ 新增：刚刚从主页切到文章的标记
   let justSwitchedToPosts = false;
 
+  function countChars(value) {
+    return Array.from((value || "").toString()).length;
+  }
+
+  function escapeHtml(value) {
+    const div = document.createElement("div");
+    div.textContent = value || "";
+    return div.innerHTML;
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value).replace(/"/g, "&quot;");
+  }
+
+  function getMediaTypeFromFile(file) {
+    const type = (file.type || "").toLowerCase();
+    const name = (file.name || "").toLowerCase();
+
+    if (type.startsWith("image/")) return "image";
+    if (type.startsWith("video/")) return "video";
+    if (/\.(mp4|mov|m4v)$/.test(name)) return "video";
+
+    return "";
+  }
+
+  function getMediaTypeFromUrl(url) {
+    const cleanUrl = (url || "").split("?")[0].toLowerCase();
+    if (/\.(mp4|mov|m4v)$/.test(cleanUrl)) return "video";
+    return "image";
+  }
+
+  function getEditorText(editor) {
+    if (!editor) return "";
+    return (editor.innerText || editor.textContent || "").replace(/\u200B/g, "");
+  }
+
+  function getEditorHtml(editor) {
+    if (!editor) return "";
+    return sanitizeRichContent(editor.innerHTML || "");
+  }
+
+  function clearEditor(editor) {
+    if (!editor) return;
+    editor.innerHTML = "";
+  }
+
+  function plainTextToEditableHtml(text) {
+    const lines = (text || "").toString().split(/\r?\n/);
+    if (!lines.length) return "";
+
+    return lines
+      .map((line) => `<div>${line ? escapeHtml(line) : "<br>"}</div>`)
+      .join("");
+  }
+
+  function sanitizeRichContent(html) {
+    const source = document.createElement("div");
+    const output = document.createElement("div");
+    const allowedTags = new Set(["DIV", "P", "BR", "H1", "H2", "H3", "H4", "H5"]);
+    const blockedTags = new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT"]);
+
+    source.innerHTML = html || "";
+
+    function walk(node, parent) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        parent.appendChild(document.createTextNode(node.textContent || ""));
+        return;
+      }
+
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+      const tag = node.tagName.toUpperCase();
+      if (blockedTags.has(tag)) return;
+
+      if (allowedTags.has(tag)) {
+        const cleanEl = document.createElement(tag.toLowerCase());
+
+        if (tag !== "BR") {
+          Array.from(node.childNodes).forEach((child) => walk(child, cleanEl));
+          if (!cleanEl.childNodes.length) {
+            cleanEl.appendChild(document.createElement("br"));
+          }
+        }
+
+        parent.appendChild(cleanEl);
+        return;
+      }
+
+      Array.from(node.childNodes).forEach((child) => walk(child, parent));
+    }
+
+    Array.from(source.childNodes).forEach((child) => walk(child, output));
+    return output.innerHTML;
+  }
+
+  function renderPostContent(target, post) {
+    if (!target) return;
+
+    target.innerHTML = "";
+    if (post.content_format === "html") {
+      target.innerHTML = sanitizeRichContent(post.content || "");
+    } else {
+      target.textContent = post.content || "";
+    }
+  }
+
+  function getPostMediaItems(post) {
+    if (Array.isArray(post.media)) {
+      return post.media
+        .filter((item) => item && item.url)
+        .map((item) => ({
+          url: item.url,
+          type: item.type === "video" ? "video" : "image",
+        }));
+    }
+
+    const media = [];
+    if (Array.isArray(post.images)) {
+      post.images.forEach((url) => {
+        if (url) media.push({ url, type: "image" });
+      });
+    }
+    if (Array.isArray(post.videos)) {
+      post.videos.forEach((url) => {
+        if (url) media.push({ url, type: "video" });
+      });
+    }
+
+    return media;
+  }
+
+  function applyTitleSize(editor, tagName) {
+    if (!editor || !tagName) return;
+
+    editor.focus();
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    if (!selection.rangeCount || !editor.contains(selection.anchorNode)) {
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    document.execCommand("formatBlock", false, tagName);
+  }
+
+  function bindTitleToolbar(toolbar, editor) {
+    if (!toolbar || !editor) return;
+
+    toolbar.querySelectorAll("[data-title-size]").forEach((button) => {
+      button.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        applyTitleSize(editor, button.dataset.titleSize);
+      });
+    });
+  }
+
+  function createTitleToolbar(editor) {
+    const toolbar = document.createElement("div");
+    toolbar.className = "editor-toolbar post-edit-toolbar";
+    toolbar.innerHTML = `
+      <button type="button" data-title-size="h1">T1</button>
+      <button type="button" data-title-size="h2">T2</button>
+      <button type="button" data-title-size="h3">T3</button>
+      <button type="button" data-title-size="h4">T4</button>
+      <button type="button" data-title-size="h5">T5</button>
+    `;
+    bindTitleToolbar(toolbar, editor);
+    return toolbar;
+  }
+
+  bindTitleToolbar(document.querySelector(".editor-toolbar"), input);
+
   /* ====== 预览九宫格渲染 ====== */
-  function renderImagePreviews() {
+  function renderMediaPreviews() {
   if (!previewGrid) return;
   previewGrid.innerHTML = "";
 
-  currentImages.forEach((item, index) => {
+  currentMedia.forEach((item, index) => {
     const wrapper = document.createElement("div");
     wrapper.className = "image-thumb";
     wrapper.dataset.index = index.toString();
 
-    const img = document.createElement("img");
-    img.src = item.url;
-    img.alt = `预览图片 ${index + 1}`;
+    if (item.type === "video") {
+      const video = document.createElement("video");
+      video.src = item.url;
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = "metadata";
+      wrapper.appendChild(video);
+
+      const badge = document.createElement("span");
+      badge.className = "video-badge";
+      badge.textContent = "视频";
+      wrapper.appendChild(badge);
+    } else {
+      const img = document.createElement("img");
+      img.src = item.url;
+      img.alt = `预览图片 ${index + 1}`;
+      wrapper.appendChild(img);
+    }
 
     const del = document.createElement("button");
     del.className = "image-thumb-delete";
@@ -49,7 +243,7 @@ document.addEventListener("DOMContentLoaded", () => {
     wrapper.addEventListener("click", () => {
       // 如果处于删除模式，不放大
       if (previewGrid.classList.contains("delete-mode")) return;
-      openLightbox(item.url);
+      openLightbox(item.url, item.type);
     });
 
     // 📱 手机长按进入 delete-mode
@@ -66,53 +260,77 @@ document.addEventListener("DOMContentLoaded", () => {
       if (longPressTimer) clearTimeout(longPressTimer);
     });
 
-    wrapper.appendChild(img);
     wrapper.appendChild(del);
     previewGrid.appendChild(wrapper);
   });
 
-  if (currentImages.length === 0) {
+  if (currentMedia.length === 0) {
     previewGrid.classList.remove("delete-mode");
   }
 }
 
 
   function removeImageByIndex(idx) {
-    const item = currentImages[idx];
+    const item = currentMedia[idx];
     if (item && item.url) {
       URL.revokeObjectURL(item.url);
     }
-    currentImages.splice(idx, 1);
-    renderImagePreviews();
+    currentMedia.splice(idx, 1);
+    renderMediaPreviews();
   }
 
-  function clearAllImages() {
-    currentImages.forEach((item) => {
+  function clearAllMedia() {
+    currentMedia.forEach((item) => {
       if (item.url) URL.revokeObjectURL(item.url);
     });
-    currentImages = [];
-    renderImagePreviews();
+    currentMedia = [];
+    renderMediaPreviews();
     if (imageInput) imageInput.value = "";
+    if (videoInput) videoInput.value = "";
+  }
+
+  function addMediaFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+
+    const remaining = MAX_MEDIA - currentMedia.length;
+    const accepted = files
+      .map((file) => ({
+        file,
+        type: getMediaTypeFromFile(file),
+      }))
+      .filter((item) => item.type);
+    const toAdd = accepted.slice(0, remaining);
+
+    toAdd.forEach((item) => {
+      const url = URL.createObjectURL(item.file);
+      currentMedia.push({
+        file: item.file,
+        url,
+        type: item.type,
+      });
+    });
+
+    if (accepted.length < files.length) {
+      alert("有些文件格式暂时不支持，只保留了图片、mp4、mov 或 m4v 视频。");
+    }
+
+    if (files.length > remaining) {
+      alert(`最多只能选 ${MAX_MEDIA} 个附件，多余的我自动忽略了～`);
+    }
+
+    renderMediaPreviews();
   }
 
   if (imageInput) {
     imageInput.addEventListener("change", () => {
-      const files = Array.from(imageInput.files || []);
-      if (!files.length) return;
+      addMediaFiles(imageInput.files);
+    });
+  }
 
-      const remaining = MAX_IMAGES - currentImages.length;
-      const toAdd = files.slice(0, remaining);
-
-      toAdd.forEach((file) => {
-        const url = URL.createObjectURL(file);
-        currentImages.push({ file, url });
-      });
-
-      if (files.length > remaining) {
-        alert(`最多只能选 ${MAX_IMAGES} 张图片，多余的我自动忽略了～`);
-      }
-
-      renderImagePreviews();
+  if (videoInput) {
+    videoInput.addEventListener("change", () => {
+      addMediaFiles(videoInput.files);
     });
   }
 
@@ -125,14 +343,15 @@ document.addEventListener("DOMContentLoaded", () => {
     return await res.json(); // [{id, content, created_at, images: []}, ...]
   }
 
-  // 支持多图：有图片时用 FormData，没有时用 JSON
-  async function createPostOnServer(content, imagesArray) {
+  // 支持附件：有图片/视频时用 FormData，没有时用 JSON
+  async function createPostOnServer(content, mediaArray, contentFormat = "html") {
     let res;
-    if (imagesArray && imagesArray.length > 0) {
+    if (mediaArray && mediaArray.length > 0) {
       const formData = new FormData();
       formData.append("content", content);
-      imagesArray.forEach((item) => {
-        formData.append("images", item.file);
+      formData.append("content_format", contentFormat);
+      mediaArray.forEach((item) => {
+        formData.append("media", item.file);
       });
 
       res = await fetch(`${API_BASE}/posts`, {
@@ -143,12 +362,12 @@ document.addEventListener("DOMContentLoaded", () => {
       res = await fetch(`${API_BASE}/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, content_format: contentFormat }),
       });
     }
 
     if (!res.ok) throw new Error("Failed to create post");
-    return await res.json(); // {id, content, created_at, images: []}
+    return await res.json(); // {id, content, created_at, media: []}
   }
 
   async function deletePostOnServer(id) {
@@ -160,11 +379,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return data.success;
   }
 
-  async function updatePostOnServer(id, content) {
+  async function updatePostOnServer(id, content, contentFormat = "html") {
     const res = await fetch(`${API_BASE}/posts/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, content_format: contentFormat }),
     });
     if (!res.ok) throw new Error("Failed to update post");
     return await res.json();
@@ -364,17 +583,33 @@ function switchSection(targetId, direction) {
     const div = document.createElement("div");
     div.className = "post-card enter";
     div.dataset.id = post.id;
+    div._postContent = post.content || "";
+    div._postContentFormat = post.content_format || "text";
 
-    const hasImages = Array.isArray(post.images) && post.images.length > 0;
+    const mediaItems = getPostMediaItems(post);
+    const hasMedia = mediaItems.length > 0;
 
-    const imageHtml = hasImages
+    const mediaHtml = hasMedia
       ? `<div class="post-image-grid">
-          ${post.images
+          ${mediaItems
             .map(
-              (src, idx) => `
-            <button type="button" class="post-image-thumb" data-full="${src}">
+              (item, idx) => {
+                const src = escapeAttr(item.url);
+                const type = item.type || getMediaTypeFromUrl(item.url);
+
+                if (type === "video") {
+                  return `
+            <button type="button" class="post-image-thumb video-thumb" data-full="${src}" data-type="video">
+              <video src="${src}" muted playsinline preload="metadata"></video>
+              <span class="video-badge">视频</span>
+            </button>`;
+                }
+
+                return `
+            <button type="button" class="post-image-thumb" data-full="${src}" data-type="image">
               <img src="${src}" alt="Post image ${idx + 1}" loading="lazy" />
-            </button>`
+            </button>`;
+              }
             )
             .join("")}
          </div>`
@@ -388,12 +623,14 @@ function switchSection(targetId, direction) {
           <button class="delete-btn" data-id="${post.id}">✖</button>
         </div>
       </div>
-      <div class="post-content">${post.content}</div>
-      ${imageHtml}
+      <div class="post-content"></div>
+      ${mediaHtml}
       <div class="post-meta">
         ${formatTime(post.created_at)}
       </div>
     `;
+
+    renderPostContent(div.querySelector(".post-content"), post);
 
     requestAnimationFrame(() => {
       div.classList.remove("enter");
@@ -431,7 +668,8 @@ function switchSection(targetId, direction) {
       thumbs.forEach((btn) => {
         btn.addEventListener("click", () => {
           const src = btn.getAttribute("data-full");
-          if (src) openLightbox(src);
+          const type = btn.getAttribute("data-type") || getMediaTypeFromUrl(src);
+          if (src) openLightbox(src, type);
         });
       });
     });
@@ -470,14 +708,28 @@ function switchSection(targetId, direction) {
     const metaDiv = cardEl.querySelector(".post-meta");
     if (!contentDiv || !metaDiv) return;
 
-    const originalText = contentDiv.textContent;
-    cardEl.dataset.originalContent = originalText;
+    const originalContent = cardEl._postContent || contentDiv.textContent || "";
+    const originalFormat = cardEl._postContentFormat || "text";
+    cardEl._originalPostContent = originalContent;
+    cardEl._originalPostContentFormat = originalFormat;
 
-    const textarea = document.createElement("textarea");
-    textarea.className = "post-edit-textarea";
-    textarea.value = originalText;
+    const editWrap = document.createElement("div");
+    editWrap.className = "post-edit-wrap";
 
-    contentDiv.replaceWith(textarea);
+    const editor = document.createElement("div");
+    editor.className = "post-edit-textarea";
+    editor.contentEditable = "true";
+    editor.setAttribute("role", "textbox");
+    editor.setAttribute("aria-multiline", "true");
+    editor.innerHTML =
+      originalFormat === "html"
+        ? sanitizeRichContent(originalContent)
+        : plainTextToEditableHtml(originalContent);
+
+    editWrap.appendChild(createTitleToolbar(editor));
+    editWrap.appendChild(editor);
+
+    contentDiv.replaceWith(editWrap);
 
     const actions = document.createElement("div");
     actions.className = "post-edit-actions";
@@ -488,7 +740,7 @@ function switchSection(targetId, direction) {
     metaDiv.before(actions);
 
     cardEl.classList.add("editing");
-    textarea.focus();
+    editor.focus();
 
     const cancelBtn = actions.querySelector(".btn-edit-cancel");
     const saveBtn = actions.querySelector(".btn-edit-save");
@@ -498,21 +750,25 @@ function switchSection(targetId, direction) {
     });
 
     saveBtn.addEventListener("click", () => {
-      saveEditingCard(cardEl, textarea);
+      saveEditingCard(cardEl, editor);
     });
   }
 
   function cancelEditingCard(cardEl) {
-    const originalText = cardEl.dataset.originalContent || "";
-    const textarea = cardEl.querySelector(".post-edit-textarea");
+    const originalContent = cardEl._originalPostContent || "";
+    const originalFormat = cardEl._originalPostContentFormat || "text";
+    const editWrap = cardEl.querySelector(".post-edit-wrap");
     const actions = cardEl.querySelector(".post-edit-actions");
     const metaDiv = cardEl.querySelector(".post-meta");
 
-    if (textarea) {
+    if (editWrap) {
       const contentDiv = document.createElement("div");
       contentDiv.className = "post-content";
-      contentDiv.textContent = originalText;
-      textarea.replaceWith(contentDiv);
+      renderPostContent(contentDiv, {
+        content: originalContent,
+        content_format: originalFormat,
+      });
+      editWrap.replaceWith(contentDiv);
     }
 
     if (actions) actions.remove();
@@ -522,16 +778,23 @@ function switchSection(targetId, direction) {
     }
 
     cardEl.classList.remove("editing");
-    delete cardEl.dataset.originalContent;
+    delete cardEl._originalPostContent;
+    delete cardEl._originalPostContentFormat;
   }
 
-  async function saveEditingCard(cardEl, textarea) {
+  async function saveEditingCard(cardEl, editor) {
     const id = cardEl.dataset.id;
-    if (!id || !textarea) return;
+    if (!id || !editor) return;
 
-    const raw = textarea.value;
-    if (!raw.trim()) {
+    const raw = getEditorHtml(editor);
+    const plainText = getEditorText(editor);
+    if (!plainText.trim()) {
       alert("内容不能为空哦～");
+      return;
+    }
+
+    if (countChars(plainText) > MAX_CONTENT_CHARS) {
+      alert(`内容有点长（>${MAX_CONTENT_CHARS}字），可以分两条发哦～`);
       return;
     }
 
@@ -543,13 +806,15 @@ function switchSection(targetId, direction) {
     saveBtn.textContent = "保存中.";
 
     try {
-      const updated = await updatePostOnServer(id, raw);
+      const updated = await updatePostOnServer(id, raw, "html");
       if (!updated) throw new Error("Update returned empty");
 
       const contentDiv = document.createElement("div");
       contentDiv.className = "post-content";
-      contentDiv.textContent = updated.content;
-      textarea.replaceWith(contentDiv);
+      renderPostContent(contentDiv, updated);
+
+      const editWrap = cardEl.querySelector(".post-edit-wrap");
+      if (editWrap) editWrap.replaceWith(contentDiv);
 
       const metaDiv = cardEl.querySelector(".post-meta");
       if (metaDiv) {
@@ -561,7 +826,10 @@ function switchSection(targetId, direction) {
       if (actions) actions.remove();
 
       cardEl.classList.remove("editing");
-      delete cardEl.dataset.originalContent;
+      cardEl._postContent = updated.content || "";
+      cardEl._postContentFormat = updated.content_format || "text";
+      delete cardEl._originalPostContent;
+      delete cardEl._originalPostContentFormat;
     } catch (err) {
       console.error("saveEditingCard error:", err);
       alert("保存失败了，可以稍后再试试，内容还在编辑框里～");
@@ -576,19 +844,20 @@ function switchSection(targetId, direction) {
   async function publishPost(options = {}) {
   if (!input || !submitBtn) return;
 
-  const raw = input.value;
-  const hasText = raw.trim().length > 0;
-  const hasImages = currentImages.length > 0;
+  const raw = getEditorHtml(input);
+  const plainText = getEditorText(input);
+  const hasText = plainText.trim().length > 0;
+  const hasMedia = currentMedia.length > 0;
 
-  // 文字和图片都没有，就不发
-  if (!hasText && !hasImages) {
-    alert("写点文字或者选一张图片再发吧～");
+  // 文字和附件都没有，就不发
+  if (!hasText && !hasMedia) {
+    alert("写点文字或者选一个附件再发吧～");
     return;
   }
 
   // 只在有文字的时候才检查长度
-  if (hasText && raw.length > 2000) {
-    alert("内容有点长（>2000字），可以分两条发哦～");
+  if (hasText && countChars(plainText) > MAX_CONTENT_CHARS) {
+    alert(`内容有点长（>${MAX_CONTENT_CHARS}字），可以分两条发哦～`);
     return;
   }
 
@@ -597,11 +866,11 @@ function switchSection(targetId, direction) {
   submitBtn.textContent = "发送中.";
 
   try {
-    const newPost = await createPostOnServer(raw, currentImages);
+    const newPost = await createPostOnServer(raw, currentMedia, "html");
     if (!newPost) throw new Error("Empty new post");
 
-    input.value = "";
-    clearAllImages();
+    clearEditor(input);
+    clearAllMedia();
 
     const el = createPostElement(newPost);
     postsList.prepend(el);
@@ -827,6 +1096,9 @@ function switchSection(targetId, direction) {
   const lightboxImg = lightbox
   ? lightbox.querySelector(".image-lightbox-img")
   : null;
+  const lightboxVideo = lightbox
+  ? lightbox.querySelector(".image-lightbox-video")
+  : null;
   const lightboxBackdrop = lightbox
   ? lightbox.querySelector(".image-lightbox-backdrop")
   : null;
@@ -834,16 +1106,31 @@ function switchSection(targetId, direction) {
   ? lightbox.querySelector(".image-lightbox-close")
   : null;   // 新增
 
-  function openLightbox(src) {
-    if (!lightbox || !lightboxImg) return;
-    lightboxImg.src = src;
+  function openLightbox(src, type = "image") {
+    if (!lightbox || !lightboxImg || !lightboxVideo) return;
+
+    if (type === "video") {
+      lightboxImg.removeAttribute("src");
+      lightboxImg.style.display = "none";
+      lightboxVideo.src = src;
+      lightboxVideo.style.display = "block";
+    } else {
+      lightboxVideo.pause();
+      lightboxVideo.removeAttribute("src");
+      lightboxVideo.style.display = "none";
+      lightboxImg.src = src;
+      lightboxImg.style.display = "block";
+    }
+
     lightbox.classList.add("show");
   }
 
   function closeLightbox() {
-    if (!lightbox || !lightboxImg) return;
+    if (!lightbox || !lightboxImg || !lightboxVideo) return;
     lightbox.classList.remove("show");
     lightboxImg.src = "";
+    lightboxVideo.pause();
+    lightboxVideo.removeAttribute("src");
   }
 
   if (lightboxBackdrop) {

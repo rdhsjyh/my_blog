@@ -47,13 +47,23 @@
         <!-- 编辑器 -->
         <div class="card editor">
           <h2 class="card-title">New Post</h2>
-          <textarea
+          <div class="editor-toolbar" aria-label="标题字号">
+            <button type="button" data-title-size="h1">T1</button>
+            <button type="button" data-title-size="h2">T2</button>
+            <button type="button" data-title-size="h3">T3</button>
+            <button type="button" data-title-size="h4">T4</button>
+            <button type="button" data-title-size="h5">T5</button>
+          </div>
+          <div
             id="post-input"
-            rows="4"
-            placeholder="宏大的理想未必能对抗虚无，微小的选择却可以："
-          ></textarea>
+            class="editor-input"
+            contenteditable="true"
+            role="textbox"
+            aria-multiline="true"
+            data-placeholder="宏大的理想未必能对抗虚无，微小的选择却可以："
+          ></div>
 
-          <!-- 图片上传区域 -->
+          <!-- 图片 / 视频上传区域 -->
           <div class="editor-image">
             <label class="image-upload-label">
               📷 上传图片
@@ -64,7 +74,16 @@
                 multiple
               />
             </label>
-            <span class="image-hint">最多 9 张</span>
+            <label class="image-upload-label">
+              🎬 上传视频
+              <input
+                type="file"
+                id="post-videos"
+                accept="video/mp4,video/quicktime,video/x-m4v,.mp4,.mov,.m4v"
+                multiple
+              />
+            </label>
+            <span class="image-hint">图片/视频共 9 个</span>
           </div>
 
           <!-- 预览九宫格 -->
@@ -134,6 +153,7 @@
   <div id="image-lightbox" class="image-lightbox">
     <div class="image-lightbox-backdrop"></div>
     <img class="image-lightbox-img" alt="Preview" />
+    <video class="image-lightbox-video" controls playsinline></video>
     <!-- 新增：右上角圆形 X 按钮 -->
     <button type="button" class="image-lightbox-close">✕</button>
   </div>

@@ -5,6 +5,7 @@ const multer = require("multer");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const MAX_CONTENT_CHARS = 10000;
 
 /* ================== 1. 解析 JSON / 表单 ================== */
 app.use(express.json());
@@ -28,7 +29,8 @@ const POSTS_FILE = path.join(DATA_DIR, "posts.json");
      id: string,
      content: string,
      created_at: string,
-     images: [{ url: string, path: string }]
+     images: [{ url: string, path: string }] // 旧数据兼容
+     media: [{ url: string, path: string, type: "image" | "video" }]
    }
 ============================================================ */
 let posts = [];
@@ -90,15 +92,138 @@ const storage = multer.diskStorage({
   },
 });
 
-// 一次最多 9 张图，字段名：images
-const upload = multer({ storage });
+const allowedVideoExts = new Set([".mp4", ".mov", ".m4v"]);
+const allowedVideoMimes = new Set([
+  "video/mp4",
+  "video/quicktime",
+  "video/x-m4v",
+]);
+
+function getMediaType(file) {
+  const mime = (file.mimetype || "").toLowerCase();
+  const ext = path.extname(file.originalname || "").toLowerCase();
+
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("video/")) return "video";
+  if (allowedVideoExts.has(ext) || allowedVideoMimes.has(mime)) return "video";
+
+  return null;
+}
+
+const upload = multer({
+  storage,
+  limits: { files: 9 },
+  fileFilter: (req, file, cb) => {
+    if (getMediaType(file)) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error("Only image, mp4, mov, and iPhone video files are supported"));
+  },
+});
+
+const uploadPostMedia = upload.fields([
+  { name: "media", maxCount: 9 },
+  { name: "images", maxCount: 9 },
+]);
+
+function normalizeContentFormat(value) {
+  return value === "html" ? "html" : "text";
+}
+
+function stripHtml(value) {
+  return (value || "")
+    .toString()
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|h[1-5])>/gi, "\n")
+    .replace(/<[^>]*>/g, "");
+}
+
+function getCountableContent(content, format) {
+  return normalizeContentFormat(format) === "html"
+    ? stripHtml(content)
+    : (content || "").toString();
+}
+
+function countChars(value) {
+  return Array.from((value || "").toString()).length;
+}
+
+function getUploadedFiles(files) {
+  if (!files) return [];
+  if (Array.isArray(files)) return files;
+
+  return Object.values(files).flat();
+}
+
+function toStoredMedia(file) {
+  const type = getMediaType(file);
+  if (!type) return null;
+
+  return {
+    url: "/uploads/" + file.filename,
+    path: path.join(uploadDir, file.filename),
+    type,
+  };
+}
+
+function normalizePostMedia(post) {
+  const media = [];
+
+  if (Array.isArray(post.media)) {
+    post.media.forEach((item) => {
+      if (!item || !item.url) return;
+      media.push({
+        url: item.url,
+        path: item.path,
+        type: item.type === "video" ? "video" : "image",
+      });
+    });
+  }
+
+  if (Array.isArray(post.images)) {
+    post.images.forEach((img) => {
+      if (!img || !img.url) return;
+      const alreadyIncluded = media.some((item) => item.url === img.url);
+      if (alreadyIncluded) return;
+      media.push({
+        url: img.url,
+        path: img.path,
+        type: "image",
+      });
+    });
+  }
+
+  return media;
+}
+
+function publicPost(post) {
+  const media = normalizePostMedia(post);
+
+  return {
+    id: post.id,
+    content: post.content,
+    content_format: normalizeContentFormat(post.content_format),
+    created_at: post.created_at,
+    media: media.map((item) => ({
+      url: item.url,
+      type: item.type,
+    })),
+    images: media
+      .filter((item) => item.type === "image")
+      .map((item) => item.url),
+    videos: media
+      .filter((item) => item.type === "video")
+      .map((item) => item.url),
+  };
+}
 
 /* ================== 5. 静态文件 ================== */
 
 // 前端静态资源：public 目录
 app.use(express.static(path.join(__dirname, "public")));
 
-// 图片静态访问：/uploads/xxx.png
+// 附件静态访问：/uploads/xxx.png
 app.use("/uploads", express.static(uploadDir));
 
 // 根路径 → public/index.html
@@ -110,65 +235,73 @@ app.get("/", (req, res) => {
 
 // 获取帖子列表
 app.get("/api/posts", (req, res) => {
-  const safePosts = posts.map((p) => ({
-    id: p.id,
-    content: p.content,
-    created_at: p.created_at,
-    images: (p.images || []).map((img) => img.url),
-  }));
+  const safePosts = posts.map(publicPost);
   res.json(safePosts);
 });
 
-// 创建帖子（支持：纯文字 / 纯图片 / 图文混合）
-app.post("/api/posts", upload.array("images", 9), (req, res) => {
-  const body = req.body || {};
-  const content = (body.content || body.text || "").toString();
+// 创建帖子（支持：纯文字 / 附件 / 图文视频混合）
+app.post("/api/posts", (req, res) => {
+  uploadPostMedia(req, res, (err) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
 
-  const hasContent = content.trim().length > 0;
+    const body = req.body || {};
+    const content = (body.content || body.text || "").toString();
+    const contentFormat = normalizeContentFormat(body.content_format);
+    const countableContent = getCountableContent(content, contentFormat);
 
-  const images = [];
-  if (Array.isArray(req.files)) {
-    req.files.forEach((file) => {
-      images.push({
-        url: "/uploads/" + file.filename,
-        path: path.join(uploadDir, file.filename),
-      });
-    });
-  }
-  const hasImages = images.length > 0;
+    if (countChars(countableContent) > MAX_CONTENT_CHARS) {
+      return res.status(400).json({ error: "Content too long" });
+    }
 
-  // 文字和图片都没有才不让发
-  if (!hasContent && !hasImages) {
-    return res.status(400).json({ error: "Content or image required" });
-  }
+    const hasContent = countableContent.trim().length > 0;
+    const media = getUploadedFiles(req.files)
+      .map(toStoredMedia)
+      .filter(Boolean);
+    const hasMedia = media.length > 0;
 
-  const newPost = {
-    id: Date.now().toString(),
-    content, // 允许是空字符串（只发图片的情况）
-    created_at: new Date().toISOString(),
-    images,
-  };
+    // 文字和附件都没有才不让发
+    if (!hasContent && !hasMedia) {
+      return res.status(400).json({ error: "Content or media required" });
+    }
 
-  // 最新的在最上面
-  posts.unshift(newPost);
-  savePosts();
+    const newPost = {
+      id: Date.now().toString(),
+      content, // 允许是空字符串（只发附件的情况）
+      content_format: contentFormat,
+      created_at: new Date().toISOString(),
+      media,
+      images: media
+        .filter((item) => item.type === "image")
+        .map((item) => ({
+          url: item.url,
+          path: item.path,
+        })),
+    };
 
-  res.json({
-    id: newPost.id,
-    content: newPost.content,
-    created_at: newPost.created_at,
-    images: newPost.images.map((img) => img.url),
+    // 最新的在最上面
+    posts.unshift(newPost);
+    savePosts();
+
+    res.json(publicPost(newPost));
   });
 });
 
-// 更新帖子（只改文字，不动图片）
+// 更新帖子（只改文字，不动附件）
 app.put("/api/posts/:id", (req, res) => {
   const { id } = req.params;
   const body = req.body || {};
   const content = (body.content || "").toString();
+  const contentFormat = normalizeContentFormat(body.content_format);
+  const countableContent = getCountableContent(content, contentFormat);
 
-  if (!content.trim()) {
+  if (!countableContent.trim()) {
     return res.status(400).json({ error: "Content required" });
+  }
+
+  if (countChars(countableContent) > MAX_CONTENT_CHARS) {
+    return res.status(400).json({ error: "Content too long" });
   }
 
   const post = posts.find((p) => p.id === id);
@@ -177,18 +310,14 @@ app.put("/api/posts/:id", (req, res) => {
   }
 
   post.content = content;
+  post.content_format = contentFormat;
   post.created_at = new Date().toISOString();
   savePosts();
 
-  res.json({
-    id: post.id,
-    content: post.content,
-    created_at: post.created_at,
-    images: (post.images || []).map((img) => img.url),
-  });
+  res.json(publicPost(post));
 });
 
-// 删除帖子（顺便把对应图片文件删掉）
+// 删除帖子（顺便把对应附件文件删掉）
 app.delete("/api/posts/:id", (req, res) => {
   const { id } = req.params;
 
@@ -199,16 +328,14 @@ app.delete("/api/posts/:id", (req, res) => {
 
   const post = posts[index];
 
-  if (Array.isArray(post.images)) {
-    post.images.forEach((img) => {
-      if (!img.path) return;
-      fs.unlink(img.path, (err) => {
-        if (err) {
-          console.warn("删除图片失败（可以忽略）：", err.message);
-        }
-      });
+  normalizePostMedia(post).forEach((item) => {
+    if (!item.path) return;
+    fs.unlink(item.path, (err) => {
+      if (err) {
+        console.warn("删除附件失败（可以忽略）：", err.message);
+      }
     });
-  }
+  });
 
   posts.splice(index, 1);
   savePosts();

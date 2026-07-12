@@ -272,8 +272,33 @@ body.posts-bg::before {
   margin-bottom: 12px;
 }
 
+/* 标题字号工具 */
+.editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.editor-toolbar button {
+  min-width: 34px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid #4a4a4a;
+  background: #303030;
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.editor-toolbar button:hover {
+  border-color: #777;
+  background: #383838;
+}
+
 /* 文本框 */
-.editor textarea {
+.editor-input {
   width: 100%;
   min-height: 80px;
   background: var(--bg-card-alt);
@@ -284,15 +309,18 @@ body.posts-bg::before {
   border-radius: 10px;
   font-size: 14px;
   line-height: 1.7;
-  resize: none;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
-.editor.compact textarea {
+.editor.compact .editor-input {
   line-height: 1.3;
 }
 
-.editor textarea::placeholder {
+.editor-input:empty::before {
+  content: attr(data-placeholder);
   color: var(--text-muted);
+  pointer-events: none;
 }
 
 /* 图片上传区域 */
@@ -300,6 +328,7 @@ body.posts-bg::before {
   margin-top: 10px;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   font-size: 13px;
   color: var(--text-muted);
@@ -355,6 +384,29 @@ body.posts-bg::before {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.image-thumb video,
+.post-image-thumb video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+.video-badge {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.68);
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 1.4;
+  z-index: 1;
 }
 
 /* 删除按钮（PC：悬停显示；手机 delete-mode：常显） */
@@ -471,6 +523,66 @@ body.posts-bg::before {
   font-size: 14px;
   line-height: 1.8;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.editor-input h1,
+.post-edit-textarea h1,
+.post-content h1 {
+  font-size: 26px;
+  line-height: 1.35;
+  margin: 12px 0 8px;
+}
+
+.editor-input h2,
+.post-edit-textarea h2,
+.post-content h2 {
+  font-size: 23px;
+  line-height: 1.4;
+  margin: 11px 0 7px;
+}
+
+.editor-input h3,
+.post-edit-textarea h3,
+.post-content h3 {
+  font-size: 20px;
+  line-height: 1.45;
+  margin: 10px 0 6px;
+}
+
+.editor-input h4,
+.post-edit-textarea h4,
+.post-content h4 {
+  font-size: 17px;
+  line-height: 1.5;
+  margin: 9px 0 5px;
+}
+
+.editor-input h5,
+.post-edit-textarea h5,
+.post-content h5 {
+  font-size: 15px;
+  line-height: 1.55;
+  margin: 8px 0 4px;
+}
+
+.editor-input h1,
+.editor-input h2,
+.editor-input h3,
+.editor-input h4,
+.editor-input h5,
+.post-edit-textarea h1,
+.post-edit-textarea h2,
+.post-edit-textarea h3,
+.post-edit-textarea h4,
+.post-edit-textarea h5,
+.post-content h1,
+.post-content h2,
+.post-content h3,
+.post-content h4,
+.post-content h5 {
+  font-weight: 800;
+  color: #ffffff;
 }
 
 /* 帖子里的九宫格图片 */
@@ -654,7 +766,7 @@ body.posts-bg::before {
 /* =========================
    New Post 编辑器：收起 / sticky
    ========================= */
-.editor textarea,
+.editor-input,
 .editor-footer {
   transition:
     max-height 0.2s ease,
@@ -710,7 +822,15 @@ body.posts-bg::before {
   color: #7cdcff;
 }
 
-/* 编辑状态下的 textarea */
+/* 编辑状态下的正文 */
+.post-edit-wrap {
+  margin-top: 10px;
+}
+
+.post-edit-toolbar {
+  margin-bottom: 8px;
+}
+
 .post-edit-textarea {
   width: 100%;
   min-height: 60px;
@@ -722,8 +842,8 @@ body.posts-bg::before {
   font-size: 14px;
   line-height: 1.6;
   color: var(--text-main);
-  resize: none;
-  margin-top: 10px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 
 /* 编辑时的按钮区域 */
@@ -968,13 +1088,19 @@ body.pin-active .pin-overlay {
   background: rgba(0, 0, 0, 0.72);
 }
 
-.image-lightbox-img {
+.image-lightbox-img,
+.image-lightbox-video {
   position: relative;
   z-index: 91;
   max-width: 92vw;
   max-height: 90vh;
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
+}
+
+.image-lightbox-video {
+  display: none;
+  background: #000000;
 }
 
 /* 新增：右上角圆形 X 按钮 */
